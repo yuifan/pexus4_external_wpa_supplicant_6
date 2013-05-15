@@ -39,9 +39,6 @@
 #include "blacklist.h"
 #include "wpas_glue.h"
 #include "wps_supplicant.h"
-#ifdef ANDROID
-#include <cutils/properties.h>
-#endif
 
 const char *wpa_supplicant_version =
 "wpa_supplicant v" VERSION_STR "\n"
@@ -483,13 +480,9 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s, wpa_states state)
 {
 #ifdef ANDROID
 	int network_id = -1;
-	if (wpa_s && wpa_s->current_ssid) {
+
+	if (wpa_s && wpa_s->current_ssid)
 		network_id = wpa_s->current_ssid->id;
-	}
-	wpa_states reported_state = state;
-	if (state == WPA_DISCONNECTED && wpa_s->disconnected) {
-		reported_state = WPA_IDLE;
-	}
 #endif
 	wpa_printf(MSG_DEBUG, "State: %s -> %s",
 		   wpa_supplicant_state_txt(wpa_s->wpa_state),
@@ -502,7 +495,7 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s, wpa_states state)
 						wpa_s->wpa_state);
 #ifdef ANDROID
 	wpa_msg(wpa_s, MSG_INFO, WPA_EVENT_STATE_CHANGE "id=%d state=%d BSSID=" MACSTR,
-		network_id, reported_state, MAC2STR(wpa_s->pending_bssid));
+		network_id, state, MAC2STR(wpa_s->pending_bssid));
 #endif
 
 	if (state == WPA_COMPLETED && wpa_s->new_connection) {
@@ -1493,10 +1486,8 @@ int wpa_drv_scan(struct wpa_supplicant *wpa_s, struct wpa_ssid **ssid_ptr)
 	if (wpa_s->driver->combo_scan) {
 		ret = wpa_s->driver->combo_scan(wpa_s->drv_priv, ssid_ptr,
 						wpa_s->conf->ssid);
-		if (!ret) {
-			wpa_s->prev_scan_ssid = (*ssid_ptr) ?
-					(*ssid_ptr) : BROADCAST_SSID_SCAN;
-		}
+		wpa_s->prev_scan_ssid = (*ssid_ptr && !ret) ?
+				(*ssid_ptr) : BROADCAST_SSID_SCAN;
 	}
 	else if (wpa_s->driver->scan) {
 		if (*ssid_ptr) {
@@ -1739,7 +1730,9 @@ static struct wpa_supplicant * wpa_supplicant_alloc(void)
 	if (wpa_s == NULL)
 		return NULL;
 	wpa_s->scan_req = 1;
-
+#ifdef ANDROID
+	wpa_s->scan_interval = 5;
+#endif
 	return wpa_s;
 }
 
@@ -2011,16 +2004,6 @@ struct wpa_supplicant * wpa_supplicant_add_iface(struct wpa_global *global,
 		return NULL;
 	}
 
-#ifdef ANDROID
-    char scan_prop[PROPERTY_VALUE_MAX];
-    char *endp;
-    if (property_get("wifi.supplicant_scan_interval", scan_prop, "6") != 0) {
-        wpa_s->scan_interval = (int)strtol(scan_prop, &endp, 0);
-        if (endp == scan_prop) {
-            wpa_s->scan_interval = 6;
-        }
-    }
-#endif
 	wpa_s->next = global->ifaces;
 	global->ifaces = wpa_s;
 

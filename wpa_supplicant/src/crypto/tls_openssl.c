@@ -49,16 +49,17 @@
 
 #ifdef ANDROID
 #include <openssl/pem.h>
-#include "keystore_get.h"
+#include <keystore/keystore_get.h>
 
 static BIO *BIO_from_keystore(const char *key)
 {
 	BIO *bio = NULL;
-	char value[KEYSTORE_MESSAGE_SIZE];
-	int length = keystore_get(key, strlen(key), value);
+	uint8_t *value = NULL;
+	int length = keystore_get(key, strlen(key), &value);
 	if (length != -1 && (bio = BIO_new(BIO_s_mem())) != NULL) {
 		BIO_write(bio, value, length);
 	}
+	free(value);
 	return bio;
 }
 #endif
@@ -887,6 +888,11 @@ struct tls_connection * tls_connection_init(void *ssl_ctx)
 #ifdef SSL_OP_NO_COMPRESSION
 	options |= SSL_OP_NO_COMPRESSION;
 #endif /* SSL_OP_NO_COMPRESSION */
+#ifdef ANDROID
+	options |= SSL_OP_NO_TLSv1_1;
+	options |= SSL_OP_NO_TLSv1_2;
+	options |= SSL_OP_NO_TICKET;
+#endif /* ANDROID */
 	SSL_set_options(conn->ssl, options);
 
 	conn->ssl_in = BIO_new(BIO_s_mem());

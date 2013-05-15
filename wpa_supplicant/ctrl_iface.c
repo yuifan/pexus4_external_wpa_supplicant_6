@@ -424,6 +424,17 @@ static int wpa_supplicant_ctrl_iface_bssid(struct wpa_supplicant *wpa_s,
 }
 
 #ifdef ANDROID
+static int wpa_supplicant_ctrl_iface_scan_interval(
+	struct wpa_supplicant *wpa_s, char *cmd)
+{
+	int scan_int = atoi(cmd);
+	if (scan_int < 0)
+		return -1;
+	wpa_s->scan_interval = scan_int;
+	return 0;
+}
+
+
 static int wpa_supplicant_ctrl_iface_blacklist(
 		struct wpa_supplicant *wpa_s, char *cmd, char *buf, size_t buflen)
 {
@@ -1633,7 +1644,7 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	int ctrl_rsp = 0;
 	int reply_len;
 
-	wpa_printf(MSG_DEBUG, "CMD: %s", buf);
+	wpa_printf(MSG_DEBUG, "CMD = %s", buf);
 
 	if (os_strncmp(buf, WPA_CTRL_RSP, os_strlen(WPA_CTRL_RSP)) == 0 ||
 	    os_strncmp(buf, "SET_NETWORK ", 12) == 0) {
@@ -1737,18 +1748,12 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		if (wpa_supplicant_ctrl_iface_bssid(wpa_s, buf + 6))
 			reply_len = -1;
 #ifdef ANDROID
+	} else if (os_strncmp(buf, "SCAN_INTERVAL ", 14) == 0) {
+		reply_len = wpa_supplicant_ctrl_iface_scan_interval(
+				wpa_s, buf + 14);
 	} else if (os_strncmp(buf, "BLACKLIST", 9) == 0) {
 		reply_len = wpa_supplicant_ctrl_iface_blacklist(
 				wpa_s, buf + 9, reply, reply_size);
-		if (os_strlen(buf) > 10 && reply_len == 0) {
-			struct wpa_blacklist *bl = wpa_s->blacklist;
-			if (os_strncmp(buf+10, "clear", 5) == 0 ||
-			    (bl != NULL && os_memcmp(bl->bssid, wpa_s->bssid, ETH_ALEN) == 0)) {
-				wpa_s->disconnected = 0;
-				wpa_s->reassociate = 1;
-				wpa_supplicant_req_scan(wpa_s, 0, 0);
-			}
-		}
 	} else if (os_strncmp(buf, "LOG_LEVEL", 9) == 0) {
 		reply_len = wpa_supplicant_ctrl_iface_log_level(
 				wpa_s, buf + 9, reply, reply_size);

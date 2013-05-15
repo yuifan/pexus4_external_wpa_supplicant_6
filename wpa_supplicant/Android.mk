@@ -18,14 +18,12 @@
 LOCAL_PATH := $(call my-dir)
 
 WPA_BUILD_SUPPLICANT := false
-ifneq ($(TARGET_SIMULATOR),true)
-  ifneq ($(BOARD_WPA_SUPPLICANT_DRIVER),)
-    WPA_BUILD_SUPPLICANT := true
-    CONFIG_DRIVER_$(BOARD_WPA_SUPPLICANT_DRIVER) = y
-  endif
+ifneq ($(BOARD_WPA_SUPPLICANT_DRIVER),)
+  WPA_BUILD_SUPPLICANT := true
+  CONFIG_DRIVER_$(BOARD_WPA_SUPPLICANT_DRIVER) = y
 endif
 
-include $(LOCAL_PATH)/.config
+include $(LOCAL_PATH)/android.config
 
 # To force sizeof(enum) = 4
 ifeq ($(TARGET_ARCH),arm)
@@ -58,7 +56,7 @@ INCLUDES += $(LOCAL_PATH)/src/tls
 INCLUDES += $(LOCAL_PATH)/src/utils
 INCLUDES += $(LOCAL_PATH)/src/wps
 INCLUDES += external/openssl/include
-INCLUDES += frameworks/base/cmds/keystore
+INCLUDES += system/security/keystore
 
 OBJS = config.c
 OBJS += src/utils/common.c
@@ -1127,7 +1125,7 @@ endif
 ifneq ($(BOARD_WPA_SUPPLICANT_PRIVATE_LIB),)
 LOCAL_STATIC_LIBRARIES += $(BOARD_WPA_SUPPLICANT_PRIVATE_LIB)
 endif
-LOCAL_SHARED_LIBRARIES := libc libcutils libcrypto libssl
+LOCAL_SHARED_LIBRARIES := libc libcutils libcrypto libssl libkeystore_binder
 LOCAL_CFLAGS := $(L_CFLAGS)
 LOCAL_SRC_FILES := $(OBJS)
 LOCAL_C_INCLUDES := $(INCLUDES)
@@ -1152,7 +1150,6 @@ include $(BUILD_EXECUTABLE)
 #
 #include $(CLEAR_VARS)
 #LOCAL_MODULE := wpa_supplicant.conf
-#LOCAL_MODULE_TAGS := user
 #LOCAL_MODULE_CLASS := ETC
 #LOCAL_MODULE_PATH := $(local_target_dir)
 #LOCAL_SRC_FILES := $(LOCAL_MODULE)
